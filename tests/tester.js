@@ -1,20 +1,16 @@
 #!/usr/bin/env node
 
 const argv = require('minimist')(process.argv.slice(2))
-const async = require('async')
 const tape = require('tape')
 const testing = require('ethereumjs-testing')
-const FORK_CONFIG = argv.fork || 'Byzantium'
+const FORK_CONFIG = argv.fork || 'Petersburg'
+const {
+  getRequiredForkConfigAlias
+} = require('./util')
 // tests which should be fixed
 const skipBroken = [
-  'CreateHashCollision', // impossible hash collision on generating address
-  'RecursiveCreateContracts',
-  'createJS_ExampleContract', // creates an account that already exsists
-  'CreateCollisionToEmpty', // temporary till fixed (2017-09-21)
-  'TransactionCollisionToEmptyButCode', // temporary till fixed (2017-09-21)
-  'TransactionCollisionToEmptyButNonce', // temporary till fixed (2017-09-21)
-  'RevertDepthCreateAddressCollision', // test case is wrong
-  'randomStatetest642' // BROKEN, rustbn.js error
+  'ecmul_0-3_5616_28000_96', // temporary till fixed (2018-09-20)
+  'dynamicAccountOverwriteEmpty' // temporary till fixed (2019-01-30), skipped along constantinopleFix work time constraints
 ]
 // tests skipped due to system specifics / design considerations
 const skipPermanent = [
@@ -115,8 +111,6 @@ if (argv.r) {
   runTests('VMTests', argv)
 } else if (argv.b) {
   runTests('BlockchainTests', argv)
-} else if (argv.a) {
-  runAll()
 }
 
 // randomized tests
@@ -181,7 +175,7 @@ function runTests (name, runnerArgs, cb) {
   testGetterArgs.skipTests = getSkipTests(argv.skip, argv.runSkipped ? 'NONE' : 'ALL')
   testGetterArgs.runSkipped = getSkipTests(argv.runSkipped, 'NONE')
   testGetterArgs.skipVM = skipVM
-  testGetterArgs.forkConfig = FORK_CONFIG
+  testGetterArgs.forkConfig = getRequiredForkConfigAlias(FORK_CONFIG)
   testGetterArgs.file = argv.file
   testGetterArgs.test = argv.test
   testGetterArgs.dir = argv.dir
@@ -243,16 +237,4 @@ function runTests (name, runnerArgs, cb) {
       })
     })
   }
-}
-
-function runAll () {
-  require('./tester.js')
-  require('./cacheTest.js')
-  require('./bloomTest.js')
-  require('./genesishashes.js')
-  async.series([
-    // runTests.bind(this, 'VMTests', {}), // VM tests disabled since we don't support Frontier gas costs
-    runTests.bind(this, 'GeneralStateTests', {}),
-    runTests.bind(this, 'BlockchainTests', {})
-  ])
 }
